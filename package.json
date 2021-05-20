@@ -1,0 +1,27 @@
+{
+  "name": "playing-with-gitflow",
+  "version": "1.0.0",
+  "description": "Test project repo for using Gitflow model",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pratiksolim/playing-with-gitflow.git"
+  },
+  "keywords": [
+    "gitflow",
+    "nodejs",
+    "javascript"
+  ],
+  "author": "<pratik.solim@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pratiksolim/playing-with-gitflow/issues"
+  },
+  "homepage": "https://github.com/pratiksolim/playing-with-gitflow#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
