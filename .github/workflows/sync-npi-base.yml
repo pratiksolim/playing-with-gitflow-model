@@ -23,7 +23,9 @@ jobs:
     - name: Check Pull Request for Conflicts
       if: steps.sync.outputs.pullRequestNumber
       run: |
-        pr_status=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}" | jq -r '.mergeable')
+        pr_status_result=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
+        echo "PR mergeable status: $pr_status_result"
+        pr_status=$(pr_status_result | jq -r '.mergeable')
         echo "PR mergeable status: $pr_status"
         
         if [ "$pr_status" == "true" ]; then
