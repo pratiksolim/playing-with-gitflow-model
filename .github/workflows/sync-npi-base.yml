@@ -26,6 +26,8 @@ jobs:
 
         git merge release/stable-app-main --no-ff --no-commit -m "Sync main branch changes" --allow-unrelated-histories
         git commit -m "Merge branch 'release/stable-app-main' into release/npi-base-latest"
+
+        git push origin release/npi-base-latest
         
         # Check for merge conflicts
         if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
