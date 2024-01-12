@@ -27,7 +27,8 @@ jobs:
         
         if [ "$pr_status" == "true" ]; then
           echo "No merge conflicts. Merging the pull request."
-          curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge"
+          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge")
+          echo "Merge Result: $merge_result"
         else
           echo "Merge conflicts detected. Please resolve conflicts manually from the following pull request ID: ${{ steps.sync.outputs.pullRequestId }}"
         fi
