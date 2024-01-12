@@ -1,0 +1,34 @@
+name: Sync NPI base with the stable app main
+
+on:
+  push:
+    branches:
+      - release/stable-app-main*
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      id: checkout
+      uses: actions/checkout@v2
+
+    - name: Sync Branches
+      id: sync
+      run: |
+        pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
+        echo "::set-output name=pullRequestId::$pull_request_id"
+
+    - name: Check Pull Request for Conflicts
+      if: steps.sync.outputs.pullRequestId
+      run: |
+        pr_status=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}" | jq -r '.mergeable')
+        
+        if [ "$pr_status" == "true" ]; then
+          echo "No merge conflicts. Merging the pull request."
+          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge")
+          echo "Merge Result: $merge_result"
+        else
+          echo "Merge conflicts detected. Please resolve conflicts manually from the following pull request ID: ${{ steps.sync.outputs.pullRequestId }}"
+        fi
