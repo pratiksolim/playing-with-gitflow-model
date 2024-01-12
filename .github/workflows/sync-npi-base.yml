@@ -26,7 +26,7 @@ jobs:
         
         git fetch origin release/npi-base-latest
         git checkout release/npi-base-latest
-        git merge release/stable-app-main --no-ff
+        git merge release/stable-app-main
         
         # Check for merge conflicts
         if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
