@@ -24,6 +24,7 @@ jobs:
         git checkout release/stable-app-main
         git pull origin release/stable-app-main
         
+        git fetch origin release/npi-base-latest
         git checkout release/npi-base-latest
         git merge main --no-ff
         
