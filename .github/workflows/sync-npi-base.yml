@@ -3,7 +3,7 @@ name: Sync NPI base with the stable app main
 on:
   push:
     branches:
-      - release/stable-app-main-*
+      - release/stable-app-main*
 
 jobs:
   sync:
@@ -20,20 +20,20 @@ jobs:
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
         
-        git fetch origin main
-        git checkout main
-        git pull origin main
+        git fetch origin release/stable-app-main
+        git checkout release/stable-app-main
+        git pull origin release/stable-app-main
         
-        git checkout feature-branch
+        git checkout release/npi-base-latest
         git merge main --no-ff
         
         # Check for merge conflicts
         if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
           echo "Merge conflicts detected. Creating pull request."
-          git push origin feature-branch
+          git push origin release/npi-base-latest
           
           # Create a pull request
-          pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync main branch into feature-branch", "head":"feature-branch", "base":"main"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
+          pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/npi-base-latest", "base":"release/stable-app-main"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
           echo "::set-output name=pullRequestId::$pull_request_id"
         else
           echo "No merge conflicts. Branches are in sync."
