@@ -1,0 +1,45 @@
+name: Sync NPI base with the stable app main
+
+on:
+  push:
+    branches:
+      - release/stable-app-main-*
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      id: checkout
+      uses: actions/checkout@v2
+
+    - name: Sync Branches
+      id: sync
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        
+        git fetch origin main
+        git checkout main
+        git pull origin main
+        
+        git checkout feature-branch
+        git merge main --no-ff
+        
+        # Check for merge conflicts
+        if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+          echo "Merge conflicts detected. Creating pull request."
+          git push origin feature-branch
+          
+          # Create a pull request
+          pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync main branch into feature-branch", "head":"feature-branch", "base":"main"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
+          echo "::set-output name=pullRequestId::$pull_request_id"
+        else
+          echo "No merge conflicts. Branches are in sync."
+        fi
+
+    - name: Display Pull Request ID
+      if: steps.sync.outputs.pullRequestId
+      run: |
+        echo "Pull Request ID: ${{ steps.sync.outputs.pullRequestId }}"
