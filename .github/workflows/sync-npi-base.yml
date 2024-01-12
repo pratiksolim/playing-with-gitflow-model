@@ -17,31 +17,17 @@ jobs:
     - name: Sync Branches
       id: sync
       run: |
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        
-        git fetch origin release/npi-base-latest
-        git checkout release/npi-base-latest
-        git pull origin release/npi-base-latest
+        pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
+        echo "::set-output name=pullRequestId::$pull_request_id"
 
-        git merge release/stable-app-main --no-ff --no-commit -m "Sync main branch changes" --allow-unrelated-histories
-        git commit -m "Merge branch 'release/stable-app-main' into release/npi-base-latest"
-
-        git push origin release/npi-base-latest
-        
-        # Check for merge conflicts
-        if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
-          echo "Merge conflicts detected. Creating pull request."
-          git push origin release/npi-base-latest
-          
-          # Create a pull request
-          pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/npi-base-latest", "base":"release/stable-app-main"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
-          echo "::set-output name=pullRequestId::$pull_request_id"
-        else
-          echo "No merge conflicts. Branches are in sync."
-        fi
-
-    - name: Display Pull Request ID
+    - name: Check Pull Request for Conflicts
       if: steps.sync.outputs.pullRequestId
       run: |
-        echo "Pull Request ID: ${{ steps.sync.outputs.pullRequestId }}"
+        pr_status=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge" | jq -r '.mergeable')
+        
+        if [ "$pr_status" == "true" ]; then
+          echo "No merge conflicts. Merging the pull request."
+          curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge"
+        else
+          echo "Merge conflicts detected. Please resolve conflicts manually from the following pull request ID: ${{ steps.sync.outputs.pullRequestId }}"
+        fi
