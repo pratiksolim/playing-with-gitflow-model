@@ -22,9 +22,9 @@ jobs:
         
         git fetch origin release/npi-base-latest
         git checkout release/npi-base-latest
-        git pull origin release/npi-base-latest --allow-unrelated-histories
+        git pull origin release/npi-base-latest
 
-        git merge release/stable-app-main --no-ff --no-commit -m "Sync main branch changes"
+        git merge release/stable-app-main --no-ff --no-commit --allow-unrelated-histories -m "Sync main branch changes"
         git commit -m "Merge branch 'release/stable-app-main' into release/npi-base-latest"
         
         # Check for merge conflicts
