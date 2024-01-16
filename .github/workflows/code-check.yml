@@ -3,8 +3,8 @@ name: Test code check
 on:
     pull_request:
         branches:
-            - 'releases/npi-base-latest'
-            - 'releases/npi-base-previous'
+            - 'release/npi-base-latest'
+            - 'release/npi-base-previous'
     workflow_call:
 
 jobs:
