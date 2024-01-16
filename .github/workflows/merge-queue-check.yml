@@ -1,6 +1,7 @@
 name: PR checks before merging
 
 on:
+  pull_request:
   merge_group:
     types: [checks_requested]
 
