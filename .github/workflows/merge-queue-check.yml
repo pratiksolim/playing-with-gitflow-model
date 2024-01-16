@@ -1,7 +1,7 @@
 name: PR checks before merging
 
 on:
-  pull_request:
+  # pull_request:
   merge_group:
     types: [checks_requested]
 
@@ -11,6 +11,7 @@ jobs:
 
     steps:
       - name: Trigger CircleCI Workflow
+        id: test-analysis
         run: |
           CIRCLECI_TOKEN=${{ secrets.PS_CIRCLECI_TOKEN }}
           CIRCLECI_PROJECT_SLUG=${{ vars.CIRCLECI_PROJECT_SLUG }}
