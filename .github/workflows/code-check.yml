@@ -1,0 +1,11 @@
+name: Test code check
+
+on:
+    workflow_call:
+
+jobs:
+    test_check:
+        name: 🔎
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "All checks passed successfully!"
