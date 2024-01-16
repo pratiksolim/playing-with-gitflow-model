@@ -15,11 +15,15 @@ jobs:
           CIRCLECI_TOKEN=${{ secrets.PS_CIRCLECI_TOKEN }}
           CIRCLECI_PROJECT_SLUG=${{ vars.CIRCLECI_PROJECT_SLUG }}
           BRANCH_NAME=$(echo $GITHUB_REF | sed 's/refs\/heads\///')
+
+          echo "Branch name: $BRANCH_NAME"
   
           # Trigger CircleCI workflow
           response=$(curl -sSL -X POST -H "Content-Type: application/json" -H "Circle-Token: $CIRCLECI_TOKEN" \
             -d "{\"branch\":\"$BRANCH_NAME\", \"parameters\":{\"trigger_branch\":\"$BRANCH_NAME\"}}" \
             "https://circleci.com/api/v2/project/$CIRCLECI_PROJECT_SLUG/pipeline")
+
+          echo "CircleCI workflow result: $response"
   
           # Extract the CircleCI workflow ID from the response
           workflow_id=$(echo "$response" | jq -r '.id')
