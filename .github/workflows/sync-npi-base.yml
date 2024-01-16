@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/create-github-app-token@v1
+      id: generate_token
+      name: Create app access token
+      with:
+        app-id: ${{ vars.PS_APP_ID }}
+        private-key: ${{ secrets.PS_APP_SECRET }}
+    
     - name: Checkout Repository
       id: checkout
       uses: actions/checkout@v2
@@ -17,18 +24,23 @@ jobs:
     - name: Sync Branches
       id: sync
       run: |
-        pull_request_id=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.id')
-        echo "::set-output name=pullRequestId::$pull_request_id"
+        pull_request_number=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" | jq -r '.number')
+        echo "::set-output name=pullRequestNumber::$pull_request_number"
 
     - name: Check Pull Request for Conflicts
-      if: steps.sync.outputs.pullRequestId
+      if: steps.sync.outputs.pullRequestNumber
       run: |
-        pr_status=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}" | jq -r '.mergeable')
+        merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
+        echo "Merge Result: $merge_result"
+        # pr_status_result=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
+        # echo "PR mergeable status: $pr_status_result"
+        # pr_status=$(pr_status_result | jq -r '.mergeable')
+        # echo "PR mergeable status: $pr_status"
         
-        if [ "$pr_status" == "true" ]; then
-          echo "No merge conflicts. Merging the pull request."
-          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestId }}/merge")
-          echo "Merge Result: $merge_result"
-        else
-          echo "Merge conflicts detected. Please resolve conflicts manually from the following pull request ID: ${{ steps.sync.outputs.pullRequestId }}"
-        fi
+        # if [ "$pr_status" == "true" ]; then
+        #   echo "No merge conflicts. Merging the pull request."
+        #   merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
+        #   echo "Merge Result: $merge_result"
+        # else
+        #   echo "Merge conflicts detected. Please resolve conflicts manually from the following pull request ID: ${{ steps.sync.outputs.pullRequestNumber }}"
+        # fi
