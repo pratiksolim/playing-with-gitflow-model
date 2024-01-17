@@ -26,7 +26,7 @@ jobs:
       run: |
         pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
         pull_request_number=$(echo "$pull_request_result" | jq -r '.number')
-        pull_request_url=$(echo "$pull_request_result" | jq -r '.url')
+        pull_request_url=$(echo "$pull_request_result" | jq -r '.html_url')
         echo "pullRequestNumber=$(echo $pull_request_number)" >> $GITHUB_OUTPUT
         echo "pullRequestURL=$(echo $pull_request_url)" >> $GITHUB_OUTPUT
 
@@ -43,19 +43,24 @@ jobs:
           echo "The pull request is mergeable. Completing the sync."
           merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
           echo "Merge Result: $merge_result"
+          isMerged=$(echo "$merge_result" | jq -r '.merged')
+
+          if [ "$isMerged" != "true" ]; then
+            echo "isPullRequestMergeable=false" >> $GITHUB_OUTPUT
+          fi
         fi
 
-    # - name: Send Slack Notification
-    #   if: steps.mergeNpiMain.outputs.isPullRequestMergeable != 'true'
-    #   run: |
-    #     CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
-    #     CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
-    #     send_slack_notification() {
-    #       MESSAGE="$1"
+    - name: Send Slack Notification
+      if: steps.mergeNpiMain.outputs.isPullRequestMergeable != 'true'
+      run: |
+        CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
+        CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
+        send_slack_notification() {
+          MESSAGE="$1"
 
-    #       curl -X POST -H "Authorization: Bearer $CD_BOT_SLACK_TOKEN" -H 'Content-type: application/json' \
-    #         --data "{\"channel\":\"$CLIENT_RELEASE_OPS_SLACK_CHANNEL\",\"text\":\"$MESSAGE\"}" \
-    #         https://slack.com/api/chat.postMessage
-    #     }
+          curl -X POST -H "Authorization: Bearer $CD_BOT_SLACK_TOKEN" -H 'Content-type: application/json' \
+            --data "{\"channel\":\"$CLIENT_RELEASE_OPS_SLACK_CHANNEL\",\"text\":\"$MESSAGE\"}" \
+            https://slack.com/api/chat.postMessage
+        }
 
-    #     send_slack_notification "GitHub Actions workflow couldn't merge the following pull request: ${{ steps.sync.outputs.pullRequestURL }}. Please take a look."
+        send_slack_notification "GitHub Actions workflow couldn't merge the following pull request: ${{ steps.sync.outputs.pullRequestURL }}. Please take a look."
