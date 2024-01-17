@@ -46,7 +46,7 @@ jobs:
         fi
 
     - name: Send Slack Notification
-      if: steps.mergeNpiMain.outputs.isPullRequestMergeable == 'true'
+      if: steps.mergeNpiMain.outputs.isPullRequestMergeable != 'true'
       run: |
         CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
         CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
