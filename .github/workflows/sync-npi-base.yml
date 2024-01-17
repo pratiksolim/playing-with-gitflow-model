@@ -25,9 +25,8 @@ jobs:
       id: sync
       run: |
         pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
-        echo "PR creation result: $pull_request_result"
-        pull_request_number=$(pull_request_result | jq -r '.number')
-        pull_request_url=$(pull_request_result | jq -r '.url')
+        pull_request_number=$(echo "$pull_request_result" | jq -r '.number')
+        pull_request_url=$(echo "$pull_request_result" | jq -r '.url')
         echo "pullRequestNumber=$(echo $pull_request_number)" >> $GITHUB_OUTPUT
         echo "pullRequestURL=$(echo $pull_request_url)" >> $GITHUB_OUTPUT
 
@@ -36,7 +35,7 @@ jobs:
       id: mergeNpiMain
       run: |
         pr_status_result=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
-        pr_status=$(pr_status_result | jq -r '.mergeable')
+        pr_status=$(echo "$pr_status_result" | jq -r '.mergeable')
         echo "Pull request mergeability status: $pr_status"
         echo "isPullRequestMergeable=$(echo $pr_status)" >> $GITHUB_OUTPUT
         
