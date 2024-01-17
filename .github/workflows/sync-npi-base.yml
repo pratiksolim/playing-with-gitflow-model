@@ -25,6 +25,7 @@ jobs:
       id: sync
       run: |
         pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
+        echo "PR creation result: $pull_request_result"
         pull_request_number=$(pull_request_result | jq -r '.number')
         pull_request_url=$(pull_request_result | jq -r '.url')
         echo "pullRequestNumber=$(echo $pull_request_number)" >> $GITHUB_OUTPUT
@@ -45,17 +46,17 @@ jobs:
           echo "Merge Result: $merge_result"
         fi
 
-    - name: Send Slack Notification
-      if: steps.mergeNpiMain.outputs.isPullRequestMergeable != 'true'
-      run: |
-        CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
-        CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
-        send_slack_notification() {
-          MESSAGE="$1"
+    # - name: Send Slack Notification
+    #   if: steps.mergeNpiMain.outputs.isPullRequestMergeable != 'true'
+    #   run: |
+    #     CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
+    #     CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
+    #     send_slack_notification() {
+    #       MESSAGE="$1"
 
-          curl -X POST -H "Authorization: Bearer $CD_BOT_SLACK_TOKEN" -H 'Content-type: application/json' \
-            --data "{\"channel\":\"$CLIENT_RELEASE_OPS_SLACK_CHANNEL\",\"text\":\"$MESSAGE\"}" \
-            https://slack.com/api/chat.postMessage
-        }
+    #       curl -X POST -H "Authorization: Bearer $CD_BOT_SLACK_TOKEN" -H 'Content-type: application/json' \
+    #         --data "{\"channel\":\"$CLIENT_RELEASE_OPS_SLACK_CHANNEL\",\"text\":\"$MESSAGE\"}" \
+    #         https://slack.com/api/chat.postMessage
+    #     }
 
-        send_slack_notification "GitHub Actions workflow couldn't merge the following pull request: ${{ steps.sync.outputs.pullRequestURL }}. Please take a look."
+    #     send_slack_notification "GitHub Actions workflow couldn't merge the following pull request: ${{ steps.sync.outputs.pullRequestURL }}. Please take a look."
