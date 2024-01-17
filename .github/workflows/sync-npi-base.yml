@@ -26,7 +26,7 @@ jobs:
       run: |
         pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"title":"Sync release/stable-app-main branch into release/npi-base-latest", "head":"release/stable-app-main", "base":"release/npi-base-latest"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
         pull_request_number=$(echo "$pull_request_result" | jq -r '.number')
-        pull_request_url=$(echo "$pull_request_result" | jq -r '.url')
+        pull_request_url=$(echo "$pull_request_result" | jq -r '.html_url')
         echo "pullRequestNumber=$(echo $pull_request_number)" >> $GITHUB_OUTPUT
         echo "pullRequestURL=$(echo $pull_request_url)" >> $GITHUB_OUTPUT
 
