@@ -68,6 +68,7 @@ jobs:
       id: mergeNpiMain
       run: |
         pr_status_result=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
+        echo "$pr_status_result"
         pr_status=$(echo "$pr_status_result" | jq -r '.mergeable')
         echo "Pull request mergeability status: $pr_status"
         echo "isPullRequestMergeable=$(echo $pr_status)" >> $GITHUB_OUTPUT
