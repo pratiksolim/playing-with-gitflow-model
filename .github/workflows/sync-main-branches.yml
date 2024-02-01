@@ -6,9 +6,11 @@ on:
       sourceBranch:
         type: string
         description: 'Source branch name'
+        required: true
       targetBranch:
         type: string
         description: 'Target branch name'
+        required: true
       previousTargetBranch:
         type: string
         description: 'Previous target branch name'
