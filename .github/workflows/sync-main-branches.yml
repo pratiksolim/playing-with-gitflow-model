@@ -1,0 +1,101 @@
+name: Sync branches through PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      sourceBranch:
+        type: string
+        description: 'Source branch name'
+      targetBranch:
+        type: string
+        description: 'Target branch name'
+      previousTargetBranch:
+        type: string
+        description: 'Previous target branch name'
+        default: ''
+      isRegularRelease:
+        type: boolean
+        description: 'Is source a desktop monthly release branch?'
+        default: false
+
+env:
+  WORKFLOW_URL: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Update previous main branch
+      id: updatePrevMain
+      if: ${{ github.event.inputs.isRegularRelease }} == true
+      run: |
+        merge_response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"base":"${{ github.event.inputs.previousTargetBranch }}","head":"${{ github.event.inputs.targetBranch }}"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/merges")
+        echo "Merge operation HTTP status code: $merge_response_code"
+
+        if [ $merge_response_code != 201 ] && [ $merge_response_code != 204 ]; then
+          curl -X POST -H "Authorization: Bearer ${{ secrets.CD_BOT_SLACK_TOKEN }}" -H 'Content-type: application/json' \
+            --data "{\"channel\":\"${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}\",\"text\":\"🛑 Github Action workflow <${{ env.WORKFLOW_URL }}|#${GITHUB_RUN_ID}> to sync stable app main branches failed.\"}" \
+            https://slack.com/api/chat.postMessage
+
+          exit 0
+        fi
+
+    - name: Create a pull request
+      id: sync
+      run: |
+        pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync ${{ github.event.inputs.targetBranch }} branch with the ${{ github.event.inputs.sourceBranch }} branch", "head":"${{ github.event.inputs.sourceBranch }}", "base":"${{ github.event.inputs.targetBranch }}"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
+
+        if ! echo "$pull_request_result" | jq -e '.number' > /dev/null; then
+          echo $pull_request_result
+
+          curl -X POST -H "Authorization: Bearer ${{ secrets.CD_BOT_SLACK_TOKEN }}" -H 'Content-type: application/json' \
+            --data "{\"channel\":\"${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}\",\"text\":\"🛑 Github Action workflow <${{ env.WORKFLOW_URL }}|#${GITHUB_RUN_ID}> to sync stable app main branches failed.\"}" \
+            https://slack.com/api/chat.postMessage
+
+          exit 0
+        fi
+
+        pull_request_number=$(echo "$pull_request_result" | jq -r '.number')
+        pull_request_url=$(echo "$pull_request_result" | jq -r '.html_url')
+        echo "pullRequestNumber=$(echo $pull_request_number)" >> $GITHUB_OUTPUT
+        echo "pullRequestURL=$(echo $pull_request_url)" >> $GITHUB_OUTPUT
+
+    - name: Try to merge the pull request
+      if: steps.sync.outputs.pullRequestNumber
+      id: mergeNpiMain
+      run: |
+        pr_status_result=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
+        pr_status=$(echo "$pr_status_result" | jq -r '.mergeable')
+        echo "Pull request mergeability status: $pr_status"
+        echo "isPullRequestMergeable=$(echo $pr_status)" >> $GITHUB_OUTPUT
+
+        if [ "$pr_status" == "true" ]; then
+          echo "The pull request is mergeable. Completing the sync."
+          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
+          echo "Merge Result: $merge_result"
+          isMerged=$(echo "$merge_result" | jq -r '.merged')
+
+          if [ "$isMerged" != "true" ]; then
+            echo "isPullRequestMergeable=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+    - name: Send Slack Notification
+      if: steps.sync.outputs.pullRequestNumber
+      run: |
+        CD_BOT_SLACK_TOKEN=${{ secrets.CD_BOT_SLACK_TOKEN }}
+        CLIENT_RELEASE_OPS_SLACK_CHANNEL=${{ vars.CLIENT_RELEASE_OPS_SLACK_CHANNEL }}
+        send_slack_notification() {
+          MESSAGE="$1"
+
+          curl -X POST -H "Authorization: Bearer $CD_BOT_SLACK_TOKEN" -H 'Content-type: application/json' \
+            --data "{\"channel\":\"$CLIENT_RELEASE_OPS_SLACK_CHANNEL\",\"text\":\"$MESSAGE\",\"unfurl_links\": true}" \
+            https://slack.com/api/chat.postMessage
+        }
+
+        if [ ${{ steps.mergeNpiMain.outputs.isPullRequestMergeable }} != 'true' ]; then
+          send_slack_notification "❗️GitHub Action workflow could not sync the \`${{ github.event.inputs.targetBranch }}\` branch with the \`${{ github.event.inputs.sourceBranch }}\` branch. Please review & merge the pull request <${{ steps.sync.outputs.pullRequestURL }}|#${{ steps.sync.outputs.pullRequestNumber }}> manually."
+        else
+          send_slack_notification "✅ The \`${{ github.event.inputs.targetBranch }}\` branch have been synced with \`${{ github.event.inputs.sourceBranch }}\` through the following pull request <${{ steps.sync.outputs.pullRequestURL }}|#${{ steps.sync.outputs.pullRequestNumber }}>"
+        fi
