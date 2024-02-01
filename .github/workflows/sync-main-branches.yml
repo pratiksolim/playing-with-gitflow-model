@@ -46,7 +46,7 @@ jobs:
       id: sync
       if: steps.updatePrevMain.conclusion == 'success' || steps.updatePrevMain.conclusion == 'skipped'
       run: |
-        pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"title":"Sync ${{ github.event.inputs.targetBranch }} branch with the ${{ github.event.inputs.sourceBranch }} branch", "head":"${{ github.event.inputs.sourceBranch }}", "base":"${{ github.event.inputs.targetBranch }}"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
+        pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d "{\"title\":\"Sync \`${{ github.event.inputs.sourceBranch }}\` branch with the \`${{ github.event.inputs.targetBranch }}\`\", \"head\":\"${{ github.event.inputs.sourceBranch }}\", \"base\":\"$${{ github.event.inputs.targetBranch }}\"}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
 
         if ! echo "$pull_request_result" | jq -e '.number' > /dev/null; then
           echo $pull_request_result
