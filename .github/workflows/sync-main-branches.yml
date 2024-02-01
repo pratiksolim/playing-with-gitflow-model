@@ -32,7 +32,7 @@ jobs:
       id: updatePrevMain
       if: github.event.inputs.isRegularRelease == 'true'
       run: |
-        if [ ${{ github.event.inputs.previousTargetBranch }} === '' ]; then
+        if [ "${{ github.event.inputs.previousTargetBranch }}" === "" ]; then
             echo "Previous target branch can not be empty for the monthly desktop release source branch"
             exit 1
         fi
