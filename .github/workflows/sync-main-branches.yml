@@ -75,21 +75,12 @@ jobs:
       if: steps.sync.outputs.pullRequestNumber
       id: mergeNpiMain
       run: |
-        pr_status_result=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
-        echo "$pr_status_result"
-        pr_status=$(echo "$pr_status_result" | jq -r '.mergeable')
-        echo "Pull request mergeability status: $pr_status"
-        echo "isPullRequestMergeable=$(echo $pr_status)" >> $GITHUB_OUTPUT
+        merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
+        echo "Merge Result: $merge_result"
+        isMerged=$(echo "$merge_result" | jq -r '.merged')
 
-        if [ "$pr_status" == "true" ]; then
-          echo "The pull request is mergeable. Completing the sync."
-          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
-          echo "Merge Result: $merge_result"
-          isMerged=$(echo "$merge_result" | jq -r '.merged')
-
-          if [ "$isMerged" != "true" ]; then
-            echo "isPullRequestMergeable=false" >> $GITHUB_OUTPUT
-          fi
+        if [ "$isMerged" != "true" ]; then
+          echo "isPullRequestMergeable=false" >> $GITHUB_OUTPUT
         fi
 
     - name: Send Slack Notification
