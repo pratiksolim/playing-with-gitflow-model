@@ -4,7 +4,7 @@ const app = express()
 
 app.get('/ping', (_req, res) => {
   res.status(200).json({
-    message: 'Health-check successful..'
+    message: 'Health-check successful...'
   })
 
   return
