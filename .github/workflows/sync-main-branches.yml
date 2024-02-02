@@ -28,11 +28,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Create app access token
+      uses: actions/create-github-app-token@v1
+      id: generate_token
+      with:
+        app-id: ${{ vars.PS_APP_ID }}
+        private-key: ${{ secrets.PS_APP_SECRET }}
+    
     - name: Update previous main branch
       id: updatePrevMain
       if: github.event.inputs.isRegularRelease == 'true'
       run: |
-        merge_response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"base":"${{ github.event.inputs.previousTargetBranch }}","head":"${{ github.event.inputs.targetBranch }}"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/merges")
+        merge_response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"base":"${{ github.event.inputs.previousTargetBranch }}","head":"${{ github.event.inputs.targetBranch }}"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/merges")
         echo "Merge operation HTTP status code: $merge_response_code"
 
         if [ $merge_response_code != 201 ] && [ $merge_response_code != 204 ]; then
@@ -47,7 +54,7 @@ jobs:
       id: sync
       if: steps.updatePrevMain.conclusion == 'success' || steps.updatePrevMain.conclusion == 'skipped'
       run: |
-        pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d "{\"title\":\"Sync \`${{ github.event.inputs.sourceBranch }}\` branch with the \`${{ github.event.inputs.targetBranch }}\`\", \"head\":\"${{ github.event.inputs.sourceBranch }}\", \"base\":\"${{ github.event.inputs.targetBranch }}\"}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
+        pull_request_result=$(curl -s -X POST -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d "{\"title\":\"Sync \`${{ github.event.inputs.sourceBranch }}\` branch with the \`${{ github.event.inputs.targetBranch }}\`\", \"head\":\"${{ github.event.inputs.sourceBranch }}\", \"base\":\"${{ github.event.inputs.targetBranch }}\"}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls")
 
         if ! echo "$pull_request_result" | jq -e '.number' > /dev/null; then
           echo $pull_request_result
@@ -68,7 +75,7 @@ jobs:
       if: steps.sync.outputs.pullRequestNumber
       id: mergeNpiMain
       run: |
-        pr_status_result=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
+        pr_status_result=$(curl -s -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}")
         echo "$pr_status_result"
         pr_status=$(echo "$pr_status_result" | jq -r '.mergeable')
         echo "Pull request mergeability status: $pr_status"
@@ -76,7 +83,7 @@ jobs:
 
         if [ "$pr_status" == "true" ]; then
           echo "The pull request is mergeable. Completing the sync."
-          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
+          merge_result=$(curl -s -X PUT -H "Authorization: Bearer ${{ steps.generate_token.outputs.token }}" -d '{"merge_method":"merge"}' "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${{ steps.sync.outputs.pullRequestNumber }}/merge")
           echo "Merge Result: $merge_result"
           isMerged=$(echo "$merge_result" | jq -r '.merged')
 
